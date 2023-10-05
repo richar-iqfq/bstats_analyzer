@@ -3,7 +3,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from utils.CalculatorAsyncV6 import MainCalculator
 from sklearn.metrics import mean_absolute_error
 from utils.Convergence import Counter
 
@@ -20,13 +19,10 @@ class StatisticAnalyser():
         Feather database with energie values.
 
     output_path (`str`):
-        Path to save the .npy files. root/results/recovering/saved_values/output_path
+        Path to save the files.
     
     alpha (`float`):
         Alpha value
-
-    percent (`tuple`) of (`float`):
-        Percent values to compute the recovering error of the form -> (0.9, 0.95, 1, 1.05, 1.1)
 
     Methods
     -------
@@ -69,25 +65,24 @@ class StatisticAnalyser():
     tolerance (`dict`):
         Dictionary with the tolerance values. Keys->'Ne_calc','Energy_S','Energy_Savrg','Recover'
     '''
-    def __init__(self, database, energies, output_path, alpha, percent):
+    def __init__(self, database, energies):
         self.database_df = pd.read_csv(database)
 
         self.database = database
         self.energies = energies
         self.plot_colors = ['blue', 'green', 'gray', 'orange', 'red']
-        self.alpha = alpha
-        self.percent = percent
 
-        counter = Counter()
-        self.count = counter.get_count(alpha)
+        # counter = Counter()
+        # self.count = counter.get_count(alpha)
         
-        root = os.getcwd()
-        self.output_path = output_path
-        self.plots_path = os.path.join(root, 'results', 'recovering', 'Statistic_Plots', self.output_path)
-        self.saved_path = os.path.join(root, 'results', 'recovering', 'saved_values', self.output_path)
+        self.plots_path = os.path.join('results', 'recovering', 'Statistic_Plots')
+        self.saved_path = os.path.join('results', 'recovering', 'saved_values')
 
         if not os.path.isdir(self.plots_path):
             os.makedirs(self.plots_path)
+
+        if not os.path.isdir(self.saved_path):
+            os.makedirs(self.saved_path)
 
     def plot_dispersion(self, bars=False, save=False, show=False):
         '''
@@ -105,9 +100,8 @@ class StatisticAnalyser():
         show(`bool`):
             if True, shows the builded plot. Defaul is False
         '''
-        b_list = range(1, 5+1)
+        b_list = range(1, 8)
 
-        
         # std for bi
         b_std = []
         for bi in b_list:
@@ -151,12 +145,12 @@ class StatisticAnalyser():
 
         plt.close()
 
-    def plot_correlation_matrix(self, save=False, show=False):
+    def plot_correlation_matrix(self, output_folder, save=False, show=False):
         '''
         Plot correlation matrix
 
         save (`bool`):
-            if True, saves the fig to root/results/recovering/Statistic_Plots/output_path/fig.pdf.
+            if True, saves the fig.
             Default is False
         
         show(`bool`):
@@ -177,12 +171,16 @@ class StatisticAnalyser():
             plt.show()
 
         if save:
-            path = os.path.join(self.plots_path, f'Correlation_matrix_a{self.alpha}.pdf')
-            fig.savefig(path, dpi=450, format='pdf')
+            path = os.path.join(self.plots_path, output_folder)
+            if not os.path.isdir(path):
+                os.makedirs(path)
+            
+            file = os.path.join(path, 'Correlation_matrix.pdf')
+            fig.savefig(file, dpi=450, format='pdf')
 
         plt.close()
 
-    def plot_Err(self, cores='All', save=False, show=False, tolerance=None, isdata=False):
+    def plot_Recovered_Err(self, save=False, show=False):
         '''
         Plot the correlation energy recovering
 
@@ -205,7 +203,7 @@ class StatisticAnalyser():
             if True, will search the .npy array for the values inside root/results/optimization/
             a{alpha}_results/saved_data
         '''
-        b_amount=5
+        b_amount=8
         Ecorr_real = self.database_df['CIe']
         Mu_real = self.database_df['Mu']
         Theta_real = self.database_df['Theta']
@@ -214,27 +212,21 @@ class StatisticAnalyser():
         MAE_Mu_results = {i+1 : {} for i in range(b_amount)}
         MAE_Theta_results = {i+1 : {} for i in range(b_amount)}
         
-        if isdata:
-            Recover_results = {}
+        Recover_results = {}
 
         print('########### Running ##########')
         for perc in self.percent:
 
             print(f'\nPercent: {perc}')
+            
+            for i in range(b_amount):
 
-            if isdata:
-                for i in range(b_amount):
+                file = os.path.join(self.saved_path, f'Ecorrb{i+1}_a{self.alpha}_perc{perc}.npy')
+                array_data = np.load(file)
 
-                    file = os.path.join(self.saved_path, f'Ecorrb{i+1}_a{self.alpha}_perc{perc}.npy')
-                    array_data = np.load(file)
-
-                    Recover_results[f'Ecorr_{i+1}'] = array_data[:,0]
-                    Recover_results[f'Theta_{i+1}']= array_data[:,1]
-                    Recover_results[f'Mu_{i+1}'] = array_data[:,2]
-
-            else:
-                mc = MainCalculator(self.output_path, cores=cores, tolerance=tolerance)
-                Recover_results = mc.run_recovering(self.database, self.energies, perc, self.alpha)
+                Recover_results[f'Ecorr_{i+1}'] = array_data[:,0]
+                Recover_results[f'Theta_{i+1}']= array_data[:,1]
+                Recover_results[f'Mu_{i+1}'] = array_data[:,2]
 
             for i in range(b_amount):
 

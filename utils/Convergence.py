@@ -8,23 +8,23 @@ Script for checking the convergence of each molecule calculated
 
 class Writter():
     '''
-    Search if there are come molecules with no convergence
+    Search if there are molecules with no convergence
 
     Parameters
     ----------
     database (`str`):
-        database path with the required info (Err1, Err2, etc)
+        database path with the required data (Err1, Err2, etc)
 
     calc_types (`tuple`) of (`int`):
-        Type of calculations to compute (1 to 5), default is (1,2,3,4,5)
+        Type of calculations to compute (1 to 8), default is (1,2,3,4,5,6,7,8)
     
     Methods
     -------
     run_check()
         start computation and save files.
     '''
-    def __init__(self, database, calc_types=(1,2,3,4,5,6,7)):
-        self.database_name = database[0:-4]
+    def __init__(self, database, calc_types=(1,2,3,4,5,6,7,8)):
+        self.database_name = database.replace('.csv', '')
         self.database = pd.read_csv(database)
         self.calc_types = calc_types
 
@@ -61,8 +61,7 @@ class Analyzer():
         self.files = []
         self.alpha = []
 
-        root = os.getcwd()
-        path = os.path.join(root, 'results', 'optimization')
+        path = os.path.join('results', 'optimization')
         content = os.listdir(path)
 
         folders = [folder for folder in content if re.search(re_path, folder)]
@@ -163,6 +162,9 @@ class Counter():
             'b3' : [],
             'b4' : [],
             'b5' : [],
+            'b6' : [],
+            'b7' : [],
+            'b8' : []
         }
 
         for alpha in alpha_list:

@@ -1,10 +1,10 @@
 from utils.StatisticAnalyser import StatisticAnalyser
 
 if __name__=='__main__':
-    output_path = 'a-0.5_results'
+    output_path = 'a-0.27_results'
     
-    database = 'data/data.csv'
+    database = 'data/results_a-0.27.csv'
     energies = 'data/energies.feather'
 
-    sa = StatisticAnalyser(database, energies)
-    sa.plot_correlation_matrix('general', save=True, show=True)
+    sa = StatisticAnalyser()
+    sa.plot_correlation_matrix(database, output_path, save=True, show=True)

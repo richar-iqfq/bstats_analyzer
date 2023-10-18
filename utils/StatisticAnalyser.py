@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from sklearn.metrics import mean_absolute_error
-from utils.Convergence import Counter
+from utils.Convergence import Convergence
 
 class StatisticAnalyser():
     '''
@@ -65,26 +65,20 @@ class StatisticAnalyser():
     tolerance (`dict`):
         Dictionary with the tolerance values. Keys->'Ne_calc','Energy_S','Energy_Savrg','Recover'
     '''
-    def __init__(self, database, energies):
-        self.database_df = pd.read_csv(database)
-
-        self.database = database
-        self.energies = energies
-        self.plot_colors = ['blue', 'green', 'gray', 'orange', 'red']
-
-        # counter = Counter()
-        # self.count = counter.get_count(alpha)
+    def __init__(self):
+        self.plot_colors = ['blue', 'green', 'gray', 'orange', 'red',
+                            'blue', 'green', 'gray', 'orange', 'red']
         
-        self.plots_path = os.path.join('results', 'recovering', 'Statistic_Plots')
-        self.saved_path = os.path.join('results', 'recovering', 'saved_values')
+        self.optim_plots_path = os.path.join('results', 'optimization', 'Statistic_Plots')
+        self.recover_plots_path = os.path.join('results', 'recovering', 'Statistic_Plots')
 
-        if not os.path.isdir(self.plots_path):
-            os.makedirs(self.plots_path)
+        if not os.path.isdir(self.optim_plots_path):
+            os.makedirs(self.optim_plots_path)
 
-        if not os.path.isdir(self.saved_path):
-            os.makedirs(self.saved_path)
+        if not os.path.isdir(self.recover_plots_path):
+            os.makedirs(self.recover_plots_path)
 
-    def plot_dispersion(self, bars=False, save=False, show=False):
+    def plot_dispersion(self, database, alpha, bars=False, save=False, show=False):
         '''
         Plot the b dispersion graphic
 
@@ -100,27 +94,39 @@ class StatisticAnalyser():
         show(`bool`):
             if True, shows the builded plot. Defaul is False
         '''
-        b_list = range(1, 8)
+        database_df = pd.read_csv(database)
+
+        conv = Convergence(database)
+        count, perc = conv.get_count()
+
+        b_list = range(1, 9)
 
         # std for bi
         b_std = []
-        for bi in b_list:
-            b_std.append(self.database_df[f'B_opt{bi}'].std(ddof=0))
-
         b_var = []
+        b_mean = []
+        
         for bi in b_list:
-            b_var.append(self.database_df[f'B_opt{bi}'].var(ddof=0))
+            b_std.append(database_df[f'B_opt{bi}'].std(ddof=0))
+            b_var.append(database_df[f'B_opt{bi}'].var(ddof=0))
+            b_mean.append(database_df[f'B_opt{bi}'].mean())
 
-        fig, axis = plt.subplot_mosaic('AABB;CCDD;.EE.')
-        fig.subplots_adjust(left=0.06, bottom=0.05, right=0.97, top=0.97)
-        fig.set_size_inches(20, 13)
+        fig_A, axis_A = plt.subplot_mosaic('AB;CD')
+        fig_A.subplots_adjust(left=0.06, bottom=0.05, right=0.97, top=0.97)
+        fig_A.set_size_inches(20, 13)
 
-        axes = [axis['A'], axis['B'], axis['C'], axis['D'], axis['E']]
+        fig_B, axis_B = plt.subplot_mosaic('AB;CD')
+        fig_B.subplots_adjust(left=0.06, bottom=0.05, right=0.97, top=0.97)
+        fig_B.set_size_inches(20, 13)
+
+        axes = [axis_A['A'], axis_A['B'], axis_A['C'], axis_A['D'],
+                axis_B['A'], axis_B['B'], axis_B['C'], axis_B['D']]
 
         # Creating the plots
-        for bi in (1, 2, 3, 4, 5):
+        for bi in b_list:
             i = bi - 1
-            bi = sns.histplot(self.database_df, x=f'B_opt{bi}', stat='count', kde=True, ax=axes[i], color=self.plot_colors[i])
+
+            bi = sns.histplot(database_df, x=f'B_opt{bi}', stat='count', kde=True, ax=axes[i], color=self.plot_colors[i])
             
             if bars:
                 bi_labels = [str(v) if v else '' for v in bi.containers[0].datavalues]
@@ -131,33 +137,38 @@ class StatisticAnalyser():
         for bi in b_list:
             i = bi - 1
 
-            text_str = f'Dispersión\n$\sigma={b_std[i]:.4f}$\n$\sigma^{2}={b_var[i]:.4f}$'
+            text_str = f'Dispersión\n$\sigma={b_std[i]:.4f}$\n$\sigma^{2}={b_var[i]:.4f}$\nmean={b_mean[i]:2f}'
+
             axes[i].text(0.05, 0.95, text_str, fontsize=12, bbox=props, transform=axes[i].transAxes, verticalalignment='top')
             axes[i].set_xlabel('')
-            axes[i].set_title(f'B_opt{bi} -> {self.count[i]} Not converged', fontweight ="bold")
+            axes[i].set_title(f"B_opt{bi} -> {count[f'b{bi}']} Not converged {100*perc[f'b{bi}']:.1f}%", fontweight ="bold")
 
         if show:
             plt.show()
 
         if save:
-            path = os.path.join(self.plots_path, f'b_dispersion_a{self.alpha}.pdf')
-            fig.savefig(path, dpi=450, format='pdf')
+            path = os.path.join(self.optim_plots_path, f'b_dispersion_a{alpha}_1.pdf')
+            fig_A.savefig(path, dpi=450, format='pdf')
+
+            path = os.path.join(self.optim_plots_path, f'b_dispersion_a{alpha}_2.pdf')
+            fig_B.savefig(path, dpi=450, format='pdf')
 
         plt.close()
 
-    def plot_correlation_matrix(self, output_folder, save=False, show=False):
+    def plot_correlation_matrix(self, database, output_folder, save=False, show=False):
         '''
         Plot correlation matrix
 
         save (`bool`):
-            if True, saves the fig.
+            if True, saves the fig_A.
             Default is False
         
         show(`bool`):
             if True, shows the builded plot. Default is False
         '''
 
-        df = self.database_df.drop(columns=['CIe', 'HF', 'Factor'])
+        database_df = pd.read_csv(database)
+        df = database_df.drop(columns=['HF', 'Factor', 'Err1', 'Err2', 'Err3', 'Err4', 'Err5', 'Err6', 'Err7', 'Err8'])
 
         corr_m = df.corr(numeric_only=True)
 
@@ -165,13 +176,13 @@ class StatisticAnalyser():
         fig.suptitle('Correlation Matrix', fontweight ="bold")
         fig.set_size_inches(9, 9)
 
-        sns.heatmap(corr_m, linewidths=0.5, mask=(np.abs(corr_m) <= 0.3), annot=True, annot_kws={"size":5}, square=True, ax=ax)
+        sns.heatmap(corr_m, linewidths=0.5, mask=(np.abs(corr_m) <= 0.3), annot=True, annot_kws={"size":6}, square=True, ax=ax)
         
         if show:
             plt.show()
 
         if save:
-            path = os.path.join(self.plots_path, output_folder)
+            path = os.path.join(self.optim_plots_path, output_folder)
             if not os.path.isdir(path):
                 os.makedirs(path)
             

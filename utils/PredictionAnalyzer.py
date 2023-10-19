@@ -125,7 +125,7 @@ class PredictionAnalyzer():
 
         ax['A'].set_xlabel('b_opt')
         ax['A'].set_ylabel('b Predicted')
-        ax['A'].set_title(f'RMSE: {PE_b*100:.2f}      r$^2$: {r2[0,1]:.3f}')
+        ax['A'].set_title(f'RMSE: {PE_b:.2f}      r$^2$: {r2[0,1]:.3f}')
 
         # Correlation energie plot
         ax['B'].scatter(energies, energies_pred, s=2, color='g')

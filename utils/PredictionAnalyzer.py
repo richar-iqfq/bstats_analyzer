@@ -50,13 +50,20 @@ class PredictionAnalyzer():
         # Disable logs and errors
         RDLogger.DisableLog('rdApp.*')
 
-        smiles_df = pd.read_csv('Database_SMILES.csv')
+        smiles_df = pd.read_csv('data/smiles.csv')
 
         img_path = os.path.join('predictions', 'plots', 'img_outliers')
+        if not os.path.isdir(img_path):
+            os.makedirs(img_path)
 
         for i, ID in enumerate(smiles_ID.values):
             row = smiles_df[smiles_df['ID'] == ID]
-            ID_smile = row['smiles'].values[0]
+
+            try:
+                ID_smile = row['smiles'].values[0]
+            except:
+                print(f'Missing ID: {ID}')
+                continue
 
             Mol = Chem.MolFromSmiles(ID_smile)
 
@@ -125,6 +132,11 @@ class PredictionAnalyzer():
         ax['B'].plot(energies, energies, '-b', linewidth='0.7')
         
         r2 = np.corrcoef(energies, energies_pred)
+
+        print(f'r2: {r2[0,1]}')
+        print(f'RMSE: {PE_e}')
+        print((1-PE_e)*100)
+        print(f'MAE: {MAE_e}')
 
         ax['B'].set_xlabel('Energies')
         ax['B'].set_ylabel('Energies Predicted')

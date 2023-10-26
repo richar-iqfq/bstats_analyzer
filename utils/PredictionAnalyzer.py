@@ -87,6 +87,10 @@ class PredictionAnalyzer():
         save `bool`
             If true save plots in pdf format inside prediction/plots
         '''
+        path = os.path.join('predictions', 'plots')
+        if not os.path.isdir(path):
+            os.makedirs(path)
+        
         #------------------------------- Err ------------------------------
         enrg = np.array(self.energies)
         enrg_pred = np.array(self.energies_pred)
@@ -177,58 +181,62 @@ class PredictionAnalyzer():
         ax['C'].axvline(Err.mean(), color='k', linestyle='dashed', linewidth=1)
         ax['C'].set_title(f'Error over Energie    MAE = {MAE_e:.4f}\nAbsolute Mean Error: {meanErr:.2f}%    Absolute Max Error: {maxErr:.2f}%')
 
-        # b and Ecorr relation with Ne
-        fig_b, ax = plt.subplots(2)
-        fig_b.set_size_inches(20, 13)
-        fig_b.suptitle('Distribution')
+        if save:
+            self.__save_img_outliers(outliers_ID)
+            fig.savefig(os.path.join(path, f'a{self.alpha}_{self.b}{self.out}_{self.percent}.pdf'), dpi=450, format='pdf')
 
-        ax[0].plot(self.database['Ne'], self.database['B_opt4'], '.r')
-        ax[0].set_xlabel('Electrons')
-        ax[0].set_ylabel('b opt')
+        if not os.path.isfile(os.path.join(path, f'Distribution_{self.alpha}_{self.b}.pdf')):
+            # b and Ecorr relation with Ne
+            fig_b, ax = plt.subplots(2)
+            fig_b.set_size_inches(20, 13)
+            fig_b.suptitle('Distribution')
 
-        ax[1].plot(self.database['Ne'], self.database['CIe'], '.g')
-        ax[1].set_xlabel('Electrons')
-        ax[1].set_ylabel('Ecorr')
+            ax[0].plot(self.database['Ne'], self.database['B_opt4'], '.r')
+            ax[0].set_xlabel('Electrons')
+            ax[0].set_ylabel('b opt')
 
-        # Ne dispersion
-        fig_c, ax = plt.subplots(1)
-        fig_c.set_size_inches(20, 13)
-        values, bins, bars = ax.hist(self.database['Ne'], max(self.database['Ne']), color='b', weights=np.ones(len(self.database['Ne'])) / len(self.database['Ne']))
-        ax.yaxis.set_major_formatter(PercentFormatter(1))
-        ax.set_xlabel('Ne')
-        
-        # sum = 0
-        # Accumulate = np.zeros(max(self.database['Ne']))
-        # y_height = np.zeros(max(self.database['Ne']))
-        # for i, val in enumerate(values):
-        #     sum += val
-        #     Accumulate[i] = sum
-        #     y_height[i] = val
+            ax[1].plot(self.database['Ne'], self.database['CIe'], '.g')
+            ax[1].set_xlabel('Electrons')
+            ax[1].set_ylabel('Ecorr')
 
-        # rects = ax.patches
-        # x_center = np.zeros(len(rects))
-        # for i, rect in enumerate(rects):
-        #     x_center[i] = rect.get_x() + rect.get_width()/2
+            if save:
+                fig_b.savefig(os.path.join(path, f'Distribution_{self.alpha}_{self.b}.pdf'), dpi=450, format='pdf')
 
-        # ac_i = 1
-        # for i in range(len(x_center)):
-        #     if ac_i != Accumulate[i]:
-        #         ax.text(x_center[i], y_height[i]+0.001, f'{Accumulate[i]*100:.2f}%', fontdict={'size': 6,})
-        #         ac_i = Accumulate[i]
+        if not os.path.isfile(os.path.join(path, f'Ne_Distribution_{self.alpha}_{self.b}.pdf')):
+            # Ne dispersion
+            fig_c, ax = plt.subplots(1)
+            fig_c.set_size_inches(20, 13)
+            values, bins, bars = ax.hist(self.database['Ne'], max(self.database['Ne']), color='b', weights=np.ones(len(self.database['Ne'])) / len(self.database['Ne']))
+            ax.yaxis.set_major_formatter(PercentFormatter(1))
+            ax.set_xlabel('Ne')
             
-        # ax['C'].bar_label(bars, fontsize=20, color='navy')
-        ax.axvline(self.database['Ne'].mean(), color='k', linestyle='dashed', linewidth=1)
-        ax.set_title(f"Number of electrons\nMean = {self.database['Ne'].mean():.0f}")
+            # sum = 0
+            # Accumulate = np.zeros(max(self.database['Ne']))
+            # y_height = np.zeros(max(self.database['Ne']))
+            # for i, val in enumerate(values):
+            #     sum += val
+            #     Accumulate[i] = sum
+            #     y_height[i] = val
+
+            # rects = ax.patches
+            # x_center = np.zeros(len(rects))
+            # for i, rect in enumerate(rects):
+            #     x_center[i] = rect.get_x() + rect.get_width()/2
+
+            # ac_i = 1
+            # for i in range(len(x_center)):
+            #     if ac_i != Accumulate[i]:
+            #         ax.text(x_center[i], y_height[i]+0.001, f'{Accumulate[i]*100:.2f}%', fontdict={'size': 6,})
+            #         ac_i = Accumulate[i]
+                
+            # ax['C'].bar_label(bars, fontsize=20, color='navy')
+            ax.axvline(self.database['Ne'].mean(), color='k', linestyle='dashed', linewidth=1)
+            ax.set_title(f"Number of electrons\nMean = {self.database['Ne'].mean():.0f}")
+
+            if save:
+                fig_c.savefig(os.path.join(path, f'Ne_Distribution_{self.alpha}_{self.b}.pdf'), dpi=450, format='pdf')
 
         if show:
             plt.show()
-
-        if save:
-            path = os.path.join('predictions', 'plots')
-            if not os.path.isdir(path):
-                os.makedirs(path)
             
-            self.__save_img_outliers(outliers_ID)
-            fig.savefig(os.path.join(path, f'a{self.alpha}_{self.b}{self.out}_{self.percent}.pdf'), dpi=450, format='pdf')
-            fig_b.savefig(os.path.join(path, f'Distribution_{self.alpha}_{self.b}.pdf'), dpi=450, format='pdf')
-            fig_c.savefig(os.path.join(path, f'Ne_Distribution_{self.alpha}_{self.b}.pdf'), dpi=450, format='pdf')
+            

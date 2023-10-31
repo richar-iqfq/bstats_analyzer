@@ -210,35 +210,30 @@ class StatisticAnalyser():
 
         plt.close()
 
-    def plot_Recovered_Err(self, save=False, show=False):
+    def plot_recovered_err(self, database, alpha, percent, save=False, show=False):
         '''
         Plot the correlation energy recovering
 
         Parameters:
-        cores ('All') or (`int`):
-            Number of cores/threads to use in calculation.
-
         save (`bool`):
             if True, saves the fig to root/results/recovering/Statistic_Plots/output_path/fig.pdf.
             Default is False
         
         show(`bool`):
             if True, shows the builded plot. Default is False
-
-        tolerance (`dict`):
-            Dictionary with the tolerance values. Keys->'Ne_calc','Energy_S','Energy_Savrg','Recover'
-            Default is None
-
-        isdata (`bool`):
-            if True, will search the .npy array for the values inside root/results/optimization/
-            a{alpha}_results/saved_data
         '''
         # recover_plots_path = os.path.join('results', 'recovering', f'a{alpha}_results')
+        saved_path = os.path.join('results', 'recovering')
 
-        b_amount=8
-        Ecorr_real = self.database_df['CIe']
-        Mu_real = self.database_df['Mu']
-        Theta_real = self.database_df['Theta']
+        b_amount = 8
+        database_df = pd.read_csv(database)
+
+        convergence = Convergence(database)
+        valid_b = convergence.get_valid_b()
+
+        Ecorr_real = database_df['CIe']
+        Mu_real = database_df['Mu']
+        Theta_real = database_df['Theta']
         
         MAE_E_results = {i+1 : {} for i in range(b_amount)}
         MAE_Mu_results = {i+1 : {} for i in range(b_amount)}
@@ -246,121 +241,144 @@ class StatisticAnalyser():
         
         Recover_results = {}
 
-        print('########### Running ##########')
-        for perc in self.percent:
+        for perc in percent:
 
             print(f'\nPercent: {perc}')
             
-            for i in range(b_amount):
+            for b in valid_b:
 
-                file = os.path.join(self.saved_path, f'Ecorrb{i+1}_a{self.alpha}_perc{perc}.npy')
+                file = os.path.join(saved_path, 'saved_values', f'data_alpha_{alpha}', f'Ecorrb{b}_a{alpha}_perc{perc}.npy')
                 array_data = np.load(file)
 
-                Recover_results[f'Ecorr_{i+1}'] = array_data[:,0]
-                Recover_results[f'Theta_{i+1}']= array_data[:,1]
-                Recover_results[f'Mu_{i+1}'] = array_data[:,2]
+                Recover_results[f'Ecorr_{b}'] = array_data[:,0]
+                Recover_results[f'Theta_{b}']= array_data[:,1]
+                Recover_results[f'Mu_{b}'] = array_data[:,2]
 
-            for i in range(b_amount):
+            for b in valid_b:
 
-                MAE = mean_absolute_error(Ecorr_real, Recover_results[f'Ecorr_{i+1}'])
-                MAE_E_results[i+1][perc] = MAE
+                MAE = mean_absolute_error(Ecorr_real, Recover_results[f'Ecorr_{b}'])
+                MAE_E_results[b][perc] = MAE
 
-                MAE = mean_absolute_error(Mu_real, Recover_results[f'Mu_{i+1}'])
-                MAE_Mu_results[i+1][perc] = MAE
+                MAE = mean_absolute_error(Mu_real, Recover_results[f'Mu_{b}'])
+                MAE_Mu_results[b][perc] = MAE
 
-                MAE = mean_absolute_error(Theta_real, Recover_results[f'Theta_{i+1}'])
-                MAE_Theta_results[i+1][perc] = MAE
+                MAE = mean_absolute_error(Theta_real, Recover_results[f'Theta_{b}'])
+                MAE_Theta_results[b][perc] = MAE
 
         # Build and save the dataframes to csv files
         MAE_E_df = pd.DataFrame(MAE_E_results)
-        path = os.path.join(self.saved_path, f'MAE_E_a{self.alpha}.csv')
+        path = os.path.join(saved_path, 'dataframes', f'MAE_E_a{alpha}.csv')
         MAE_E_df.to_csv(path)
 
         MAE_Mu_df = pd.DataFrame(MAE_Mu_results)
-        path = os.path.join(self.saved_path, f'MAE_Mu_a{self.alpha}.csv')
+        path = os.path.join(saved_path, 'dataframes', f'MAE_Mu_a{alpha}.csv')
         MAE_Mu_df.to_csv(path)
 
         MAE_Theta_df = pd.DataFrame(MAE_Theta_results)
-        path = os.path.join(self.saved_path, f'MAE_Theta_a{self.alpha}.csv')
+        path = os.path.join(saved_path, 'dataframes', f'MAE_Theta_a{alpha}.csv')
         MAE_Theta_df.to_csv(path)
 
         # Build and save plots
         #================================= E_corr =========================================
-        fig_Ecorr, axis = plt.subplot_mosaic('AABB;CCDD;.EE.')
-        fig_Ecorr.suptitle('Correlation Energy Recover', fontweight='bold')
+        fig_Ecorr, axis = plt.subplot_mosaic('ABCD;EFGH')
+        fig_Ecorr.suptitle(f'Energy Recover\nAlpha = {alpha}', fontweight='bold')
         fig_Ecorr.subplots_adjust(left=0.06, bottom=0.06, right=0.93, top=0.93, hspace=0.26)
         fig_Ecorr.set_size_inches(20, 13)
 
-        axes = [axis['A'], axis['B'], axis['C'], axis['D'], axis['E']]
+        axes = [
+            axis['A'], axis['B'], axis['C'], axis['D'],
+            axis['E'], axis['F'], axis['G'], axis['H']
+        ]
         
-        for j in range(b_amount):
-            x = np.array(self.percent)*100
-            y = [val for val in MAE_E_results[j+1].values()]
+        for b in valid_b:
+            x = np.array(percent)
+            y = [val for val in MAE_E_results[b].values()]
 
             y = -np.log10(y)
 
-            axes[j].plot(x, y, marker='+', color=self.plot_colors[j])
-            axes[j].set_title(f'B_opt{j+1}', fontweight='bold')
-            axes[j].set_xlabel('Percentage')
-            axes[j].set_ylabel('-log(MAE)')
+            axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
+            axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
+            axes[b-1].set_xlabel('Percentage')
+            axes[b-1].set_ylabel('-log(MAE)')
         
         if show:
             plt.show()
 
         if save:
-            path = os.path.join(self.plots_path, f'Correlation_Energy_Recover_a{self.alpha}.pdf')
+            plots_path = os.path.join(saved_path, 'Statistic_Plots', f'results_{alpha}')
+
+            if not os.path.isdir(plots_path):
+                os.makedirs(plots_path)
+            
+            path = os.path.join(plots_path, f'Correlation_Energy_Recover_a{alpha}.pdf')
             fig_Ecorr.savefig(path, dpi=450, format='pdf')
 
         #================================= Mu_recover =========================================
-        fig_Mu, axis = plt.subplot_mosaic('AABB;CCDD;.EE.')
-        fig_Mu.suptitle('Mu Recover', fontweight='bold')
+        fig_Mu, axis = plt.subplot_mosaic('ABCD;EFGH')
+        fig_Mu.suptitle(f'Mu Recover\nAlpha = {alpha}', fontweight='bold')
         fig_Mu.subplots_adjust(left=0.06, bottom=0.06, right=0.93, top=0.93, hspace=0.26)
         fig_Mu.set_size_inches(20, 13)
 
-        axes = [axis['A'], axis['B'], axis['C'], axis['D'], axis['E']]
+        axes = [
+            axis['A'], axis['B'], axis['C'], axis['D'],
+            axis['E'], axis['F'], axis['G'], axis['H']
+        ]
         
-        for j in range(b_amount):
-            x = np.array(self.percent)*100
-            y = [val for val in MAE_Mu_results[j+1].values()]
+        for b in valid_b:
+            x = np.array(percent)
+            y = [val for val in MAE_Mu_results[b].values()]
 
             y = -np.log10(y)
 
-            axes[j].plot(x, y, marker='+', color=self.plot_colors[j])
-            axes[j].set_title(f'B_opt{j+1}', fontweight='bold')
-            axes[j].set_xlabel('Percentage')
-            axes[j].set_ylabel('-log(MAE)')
+            axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
+            axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
+            axes[b-1].set_xlabel('Percentage')
+            axes[b-1].set_ylabel('-log(MAE)')
         
         if show:
             plt.show()
 
         if save:
-            path = os.path.join(self.plots_path, f'Mu_Recover_a{self.alpha}.pdf')
+            plots_path = os.path.join(saved_path, 'Statistic_Plots', f'results_{alpha}')
+
+            if not os.path.isdir(plots_path):
+                os.makedirs(plots_path)
+            
+            path = os.path.join(plots_path, f'Mu_Recover_a{alpha}.pdf')
             fig_Mu.savefig(path, dpi=450, format='pdf')
 
         #================================= Theta_recover =========================================
-        fig_Theta, axis = plt.subplot_mosaic('AABB;CCDD;.EE.')
-        fig_Theta.suptitle('Theta Recover', fontweight='bold')
+        fig_Theta, axis = plt.subplot_mosaic('ABCD;EFGH')
+        fig_Theta.suptitle(f'Theta Recover\nAlpha = {alpha}', fontweight='bold')
         fig_Theta.subplots_adjust(left=0.06, bottom=0.06, right=0.93, top=0.93, hspace=0.26)
         fig_Theta.set_size_inches(20, 13)
 
-        axes = [axis['A'], axis['B'], axis['C'], axis['D'], axis['E']]
+        axes = [
+            axis['A'], axis['B'], axis['C'], axis['D'],
+            axis['E'], axis['F'], axis['G'], axis['H']
+        ]
         
-        for j in range(b_amount):
-            x = np.array(self.percent)*100
-            y = [val for val in MAE_Theta_results[j+1].values()]
+        for b in valid_b:
+            x = np.array(percent)
+            y = [val for val in MAE_Theta_results[b].values()]
 
             y = -np.log10(y)
 
-            axes[j].plot(x, y, marker='+', color=self.plot_colors[j])
-            axes[j].set_title(f'B_opt{j+1}', fontweight='bold')
-            axes[j].set_xlabel('Percentage')
-            axes[j].set_ylabel('-log(MAE)')
+            axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
+            axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
+            axes[b-1].set_xlabel('Percentage')
+            axes[b-1].set_ylabel('-log(MAE)')
         
         if show:
             plt.show()
 
         if save:
-            path = os.path.join(self.plots_path, f'Theta_Recover_a{self.alpha}.pdf')
+            plots_path = os.path.join(saved_path, 'Statistic_Plots', f'results_{alpha}')
+
+            if not os.path.isdir(plots_path):
+                os.makedirs(plots_path)
+            
+            path = os.path.join(plots_path, f'Theta_Recover_a{alpha}.pdf')
             fig_Theta.savefig(path, dpi=450, format='pdf')
         
         plt.close('all')

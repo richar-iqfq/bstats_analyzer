@@ -19,3 +19,51 @@ class PlotMerge():
         output_path = os.path.join(self.path, 'b_dispersion.pdf')
         self.merger.write(output_path)
         self.merger.close()
+
+    def mergeRecover(self, alpha):
+        energy_pdfs = []
+        mu_pdfs = []
+        theta_pdfs = []
+        
+        for a in alpha:
+            
+            pdfs_path = os.path.join('results', 'recovering', 'Statistic_Plots', f'results_{a}')
+            output_path = os.path.join('results', 'recovering', 'Statistic_Plots', 'general')
+
+            energy_path = os.path.join(pdfs_path, f'Correlation_Energy_Recover_a{a}.pdf')
+            mu_path = os.path.join(pdfs_path, f'Mu_Recover_a{a}.pdf')
+            theta_path = os.path.join(pdfs_path, f'Theta_Recover_a{a}.pdf')
+
+            energy_pdfs.append(energy_path)
+            mu_pdfs.append(mu_path)
+            theta_pdfs.append(theta_path)
+
+            # Energy
+            merger = PdfMerger()
+
+            for pdf in energy_pdfs:
+                merger.append(pdf)
+
+            file = os.path.join(output_path, 'Energy_recovering.pdf')
+            merger.write(file)
+            merger.close()
+
+            # Mu
+            merger = PdfMerger()
+
+            for pdf in mu_pdfs:
+                merger.append(pdf)
+
+            file = os.path.join(output_path, 'Mu_recovering.pdf')
+            merger.write(file)
+            merger.close()
+
+            # Theta
+            merger = PdfMerger()
+
+            for pdf in theta_pdfs:
+                merger.append(pdf)
+
+            file = os.path.join(output_path, 'Theta_recovering.pdf')
+            merger.write(file)
+            merger.close()

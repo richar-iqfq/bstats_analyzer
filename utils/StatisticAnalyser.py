@@ -1,6 +1,7 @@
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.ticker import PercentFormatter
+import seaborn as sns
 import numpy as np
 import os
 from sklearn.metrics import mean_absolute_error
@@ -68,17 +69,27 @@ class StatisticAnalyser():
     def __init__(self):
         self.plot_colors = ['blue', 'green', 'gray', 'orange', 'red',
                             'blue', 'green', 'gray', 'orange', 'red']
-        
-        self.optim_plots_path = os.path.join('results', 'optimization', 'Statistic_Plots')
-        self.recover_plots_path = os.path.join('results', 'recovering', 'Statistic_Plots')
 
-        if not os.path.isdir(self.optim_plots_path):
-            os.makedirs(self.optim_plots_path)
+    def retire_anomalies(self, data, cut_off=3):
+        anomalies = np.ones(len(data), dtype=bool)
 
-        if not os.path.isdir(self.recover_plots_path):
-            os.makedirs(self.recover_plots_path)
+        std = np.std(data)
+        mean = np.mean(data)
+        anomaly_cut_off = std * cut_off
 
-    def plot_dispersion(self, database, alpha, bars=False, save=False, show=False):
+        lower_limit = mean - anomaly_cut_off
+        upper_limit = mean + anomaly_cut_off
+
+        for i, value in enumerate(data):
+            if value > upper_limit or value < lower_limit:
+                anomalies[i] = 0
+
+        data = data[anomalies]
+        anomalies_count = np.count_nonzero(np.invert(anomalies))
+
+        return data, anomalies_count
+
+    def plot_dispersion(self, database, alpha, save=False, show=False):
         '''
         Plot the b dispersion graphic
 
@@ -94,64 +105,72 @@ class StatisticAnalyser():
         show(`bool`):
             if True, shows the builded plot. Defaul is False
         '''
+        optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_results')
+        
         database_df = pd.read_csv(database)
 
         conv = Convergence(database)
         count, perc = conv.get_count()
-
-        b_list = range(1, 9)
+        b_list = range(1, 9)#conv.get_valid_b()
 
         # std for bi
-        b_std = []
-        b_var = []
-        b_mean = []
+        b_std = [0]*8
+        b_var = [0]*8
+        b_mean = [0]*8
         
         for bi in b_list:
-            b_std.append(database_df[f'B_opt{bi}'].std(ddof=0))
-            b_var.append(database_df[f'B_opt{bi}'].var(ddof=0))
-            b_mean.append(database_df[f'B_opt{bi}'].mean())
+            i = bi - 1
+            b_std[i] = database_df[f'B_opt{bi}'].std(ddof=0)
+            b_var[i] = database_df[f'B_opt{bi}'].var(ddof=0)
+            b_mean[i] = database_df[f'B_opt{bi}'].mean()
 
-        fig_A, axis_A = plt.subplot_mosaic('AB;CD')
-        fig_A.subplots_adjust(left=0.06, bottom=0.05, right=0.97, top=0.97)
-        fig_A.set_size_inches(20, 13)
+        fig, axis = plt.subplot_mosaic('ABCD;EFGH')
+        fig.suptitle(f'Alpha={alpha}')
+        fig.subplots_adjust(left=0.04, bottom=0.075, right=0.97, top=0.94)
+        fig.set_size_inches(20, 13)
 
-        fig_B, axis_B = plt.subplot_mosaic('AB;CD')
-        fig_B.subplots_adjust(left=0.06, bottom=0.05, right=0.97, top=0.97)
-        fig_B.set_size_inches(20, 13)
-
-        axes = [axis_A['A'], axis_A['B'], axis_A['C'], axis_A['D'],
-                axis_B['A'], axis_B['B'], axis_B['C'], axis_B['D']]
+        axes = [axis['A'], axis['B'], axis['C'], axis['D'], axis['E'], axis['F'], axis['G'], axis['H']]
+                
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
         # Creating the plots
         for bi in b_list:
             i = bi - 1
+            data = database_df[f'B_opt{bi}']
 
-            bi = sns.histplot(database_df, x=f'B_opt{bi}', stat='count', kde=True, ax=axes[i], color=self.plot_colors[i])
-            
-            if bars:
-                bi_labels = [str(v) if v else '' for v in bi.containers[0].datavalues]
-                bi.bar_label(bi.containers[0], labels=bi_labels, rotation=45, fontsize=8)
+            data, anomalies_count = self.retire_anomalies(data)
 
-        # Add the text box
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-        for bi in b_list:
-            i = bi - 1
+            center = data.min() + (data.max() - data.min())/2
 
-            text_str = f'Dispersión\n$\sigma={b_std[i]:.4f}$\n$\sigma^{2}={b_var[i]:.4f}$\nmean={b_mean[i]:2f}'
+            b_std = np.std(data)
+            b_mean = np.mean(data)
+            b_var = np.var(data)
 
-            axes[i].text(0.05, 0.95, text_str, fontsize=12, bbox=props, transform=axes[i].transAxes, verticalalignment='top')
-            axes[i].set_xlabel('')
-            axes[i].set_title(f"B_opt{bi} -> {count[f'b{bi}']} Not converged {100*perc[f'b{bi}']:.1f}%", fontweight ="bold")
+            size = len(data)
+
+            values, bins, bars = axes[i].hist(data, 40, color=self.plot_colors[i], weights=np.ones(size)/size)
+            axes[i].yaxis.set_major_formatter(PercentFormatter(1))
+            axes[i].axvline(b_mean, color='k', linestyle='dashed', linewidth=1)            
+
+            # Add the text box
+            text_str = f'Dispersión\n$\sigma={b_std:.4f}$\n$\sigma^{2}={b_var:.4f}$\nmean={b_mean:.2f}'
+
+            if b_mean > center:
+                x_pos = 0.05
+            else:
+                x_pos = 0.65
+
+            axes[i].text(x_pos, 0.95, text_str, fontsize=12, bbox=props, transform=axes[i].transAxes, verticalalignment='top')
+
+            axes[i].set_xlabel(f'B_opt{bi}')
+            axes[i].set_title(f"{100*perc[f'b{bi}']:.1f}% Not converged", fontweight ="bold")
 
         if show:
             plt.show()
 
         if save:
-            path = os.path.join(self.optim_plots_path, f'b_dispersion_a{alpha}_1.pdf')
-            fig_A.savefig(path, dpi=450, format='pdf')
-
-            path = os.path.join(self.optim_plots_path, f'b_dispersion_a{alpha}_2.pdf')
-            fig_B.savefig(path, dpi=450, format='pdf')
+            path = os.path.join(optim_plots_path, f'b_dispersion_a{alpha}.pdf')
+            fig.savefig(path, dpi=450, format='pdf')
 
         plt.close()
 
@@ -214,6 +233,8 @@ class StatisticAnalyser():
             if True, will search the .npy array for the values inside root/results/optimization/
             a{alpha}_results/saved_data
         '''
+        # recover_plots_path = os.path.join('results', 'recovering', f'a{alpha}_results')
+
         b_amount=8
         Ecorr_real = self.database_df['CIe']
         Mu_real = self.database_df['Mu']

@@ -109,6 +109,8 @@ class StatisticAnalyser():
         
         database_df = pd.read_csv(database)
 
+        available_columns = database_df.columns
+
         conv = Convergence(database)
         count, perc = conv.get_count()
         b_list = range(1, 9)#conv.get_valid_b()
@@ -120,9 +122,11 @@ class StatisticAnalyser():
         
         for bi in b_list:
             i = bi - 1
-            b_std[i] = database_df[f'B_opt{bi}'].std(ddof=0)
-            b_var[i] = database_df[f'B_opt{bi}'].var(ddof=0)
-            b_mean[i] = database_df[f'B_opt{bi}'].mean()
+                
+            if f'B_opt{bi}' in available_columns:
+                b_std[i] = database_df[f'B_opt{bi}'].std(ddof=0)
+                b_var[i] = database_df[f'B_opt{bi}'].var(ddof=0)
+                b_mean[i] = database_df[f'B_opt{bi}'].mean()
 
         fig, axis = plt.subplot_mosaic('ABCD;EFGH')
         fig.suptitle(f'Alpha={alpha}')
@@ -136,34 +140,36 @@ class StatisticAnalyser():
         # Creating the plots
         for bi in b_list:
             i = bi - 1
-            data = database_df[f'B_opt{bi}']
+            
+            if f'B_opt{bi}' in available_columns:
+                data = database_df[f'B_opt{bi}']
 
-            data, anomalies_count = self.retire_anomalies(data)
+                data, anomalies_count = self.retire_anomalies(data)
 
-            center = data.min() + (data.max() - data.min())/2
+                center = data.min() + (data.max() - data.min())/2
 
-            b_std = np.std(data)
-            b_mean = np.mean(data)
-            b_var = np.var(data)
+                b_std = np.std(data)
+                b_mean = np.mean(data)
+                b_var = np.var(data)
 
-            size = len(data)
+                size = len(data)
 
-            values, bins, bars = axes[i].hist(data, 40, color=self.plot_colors[i], weights=np.ones(size)/size)
-            axes[i].yaxis.set_major_formatter(PercentFormatter(1))
-            axes[i].axvline(b_mean, color='k', linestyle='dashed', linewidth=1)            
+                values, bins, bars = axes[i].hist(data, 40, color=self.plot_colors[i], weights=np.ones(size)/size)
+                axes[i].yaxis.set_major_formatter(PercentFormatter(1))
+                axes[i].axvline(b_mean, color='k', linestyle='dashed', linewidth=1)            
 
-            # Add the text box
-            text_str = f'Dispersión\n$\sigma={b_std:.4f}$\n$\sigma^{2}={b_var:.4f}$\nmean={b_mean:.2f}'
+                # Add the text box
+                text_str = f'Dispersión\n$\sigma={b_std:.4f}$\n$\sigma^{2}={b_var:.4f}$\nmean={b_mean:.2f}'
 
-            if b_mean > center:
-                x_pos = 0.05
-            else:
-                x_pos = 0.65
+                if b_mean > center:
+                    x_pos = 0.05
+                else:
+                    x_pos = 0.65
 
-            axes[i].text(x_pos, 0.95, text_str, fontsize=12, bbox=props, transform=axes[i].transAxes, verticalalignment='top')
+                axes[i].text(x_pos, 0.95, text_str, fontsize=12, bbox=props, transform=axes[i].transAxes, verticalalignment='top')
 
-            axes[i].set_xlabel(f'B_opt{bi}')
-            axes[i].set_title(f"{100*perc[f'b{bi}']:.1f}% Not converged", fontweight ="bold")
+                axes[i].set_xlabel(f'B_opt{bi}')
+                axes[i].set_title(f"{100*perc[f'b{bi}']:.1f}% Not converged", fontweight ="bold")
 
         if show:
             plt.show()

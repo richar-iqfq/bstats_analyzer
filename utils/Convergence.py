@@ -9,6 +9,7 @@ Script for checking the convergence of each molecule calculated
 class Convergence():
     def __init__(self, database, calc_types=(1,2,3,4,5,6,7,8)):
         self.database = pd.read_csv(database)
+        self.availabable_columns = self.database.columns
         self.calc_types = calc_types
         self.not_converged_count = {}
         self.not_converged_percent = {}
@@ -46,10 +47,15 @@ class Convergence():
 
         else:
             for type in self.calc_types:
-                count = len(self.database[self.database[f'Err{type}']>=1E-3])
-                
-                self.not_converged_count[f'b{type}'] = count
-                self.not_converged_percent[f'b{type}'] = count/len(self.database[f'Err{type}'])
+                if f'Err{type}' in self.availabable_columns:
+                    count = len(self.database[self.database[f'Err{type}']>=1E-3])
+                    
+                    self.not_converged_count[f'b{type}'] = count
+                    self.not_converged_percent[f'b{type}'] = count/len(self.database[f'Err{type}'])
+
+                else:
+                    self.not_converged_count[f'b{type}'] = 0
+                    self.not_converged_percent[f'b{type}'] = 0
 
         return self.not_converged_count, self.not_converged_percent
 

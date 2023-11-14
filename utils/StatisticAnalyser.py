@@ -21,7 +21,7 @@ class StatisticAnalyser():
 
     output_path (`str`):
         Path to save the files.
-    
+
     alpha (`float`):
         Alpha value
 
@@ -32,11 +32,11 @@ class StatisticAnalyser():
 
     bars (`bool`):
         if True, show label with count over each ploted bar
-    
+
     save (`bool`):
         if True, saves the fig to root/results/recovering/Statistic_Plots/output_path/fig.pdf.
         Default is False
-    
+
     show(`bool`):
         if True, shows the builded plot. Default is False
 
@@ -46,7 +46,7 @@ class StatisticAnalyser():
     save (`bool`):
         if True, saves the fig to root/results/recovering/Statistic_Plots/output_path/fig.pdf.
         Default is False
-    
+
     show(`bool`):
         if True, shows the builded plot. Default is False
 
@@ -59,7 +59,7 @@ class StatisticAnalyser():
     save (`bool`):
         if True, saves the fig to root/results/recovering/Statistic_Plots/output_path/fig.pdf.
         Default is False
-    
+
     show(`bool`):
         if True, shows the builded plot. Default is False
 
@@ -70,9 +70,38 @@ class StatisticAnalyser():
         self.plot_colors = ['blue', 'green', 'gray', 'orange', 'red',
                             'blue', 'green', 'gray', 'orange', 'red']
 
-    def retire_anomalies(self, data, cut_off=3):
-        anomalies = np.ones(len(data), dtype=bool)
+        self.__begin_alpha_dispersion()
 
+    def __begin_alpha_dispersion(self, calc_types=8):
+        self.not_converged = {
+            i+1 : {} for i in range(calc_types)
+        }
+
+        self.sigma = {
+            i+1 : {} for i in range(calc_types)
+        }
+
+        self.sigma_2 = {
+            i+1 : {} for i in range(calc_types)
+        }
+
+        self.mean = {
+            i+1 : {} for i in range(calc_types)
+        }
+
+    def retire_not_converged(self, database, type):
+        database_df = database[ database[f'Err{type}'] <= 1E-4 ]
+
+        return database_df
+
+    def retire_anomalies(self, dataset, cut_off=3):
+        data = dataset.values
+
+        # Remove extreme values
+        data = data[ data >= -200 ]
+        data = data[ data <= 200 ]
+
+        # Dispersion
         std = np.std(data)
         mean = np.mean(data)
         anomaly_cut_off = std * cut_off
@@ -80,6 +109,8 @@ class StatisticAnalyser():
         lower_limit = mean - anomaly_cut_off
         upper_limit = mean + anomaly_cut_off
 
+        # Retire anomalies
+        anomalies = np.ones(len(data), dtype=bool)
         for i, value in enumerate(data):
             if value > upper_limit or value < lower_limit:
                 anomalies[i] = 0
@@ -89,7 +120,7 @@ class StatisticAnalyser():
 
         return data, anomalies_count
 
-    def plot_dispersion(self, database, alpha, save=False, show=False):
+    def plot_dispersion(self, database, alpha, save=False, show=False, append=False, mode=None):
         '''
         Plot the b dispersion graphic
 
@@ -97,16 +128,22 @@ class StatisticAnalyser():
         ----------
         bars (`bool`):
             if True, show label with count over each ploted bar.
-        
+
         save (`bool`):
             if True, saves the fig to root/results/recovering/Statistic_Plots/output_path/fig.pdf.
             Default is False
-        
+
         show(`bool`):
             if True, shows the builded plot. Defaul is False
         '''
-        optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_results')
-        
+
+        if mode == 'odd':
+            optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_odd_results')
+        elif mode == 'even':
+            optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_even_results')
+        else:
+            optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_results')
+
         database_df = pd.read_csv(database)
 
         available_columns = database_df.columns
@@ -119,14 +156,6 @@ class StatisticAnalyser():
         b_std = [0]*8
         b_var = [0]*8
         b_mean = [0]*8
-        
-        for bi in b_list:
-            i = bi - 1
-                
-            if f'B_opt{bi}' in available_columns:
-                b_std[i] = database_df[f'B_opt{bi}'].std(ddof=0)
-                b_var[i] = database_df[f'B_opt{bi}'].var(ddof=0)
-                b_mean[i] = database_df[f'B_opt{bi}'].mean()
 
         fig, axis = plt.subplot_mosaic('ABCD;EFGH')
         fig.suptitle(f'Alpha={alpha}')
@@ -134,32 +163,40 @@ class StatisticAnalyser():
         fig.set_size_inches(20, 13)
 
         axes = [axis['A'], axis['B'], axis['C'], axis['D'], axis['E'], axis['F'], axis['G'], axis['H']]
-                
+
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 
         # Creating the plots
         for bi in b_list:
             i = bi - 1
-            
+
             if f'B_opt{bi}' in available_columns:
-                data = database_df[f'B_opt{bi}']
+                database_df_cleaned = self.retire_not_converged(database_df, bi)
+
+                data = database_df_cleaned[f'B_opt{bi}']
 
                 data, anomalies_count = self.retire_anomalies(data)
 
                 center = data.min() + (data.max() - data.min())/2
 
                 b_std = np.std(data)
-                b_mean = np.mean(data)
                 b_var = np.var(data)
+                b_mean = np.mean(data)
+
+                if append:
+                    self.not_converged[bi][alpha] = count[f'b{bi}']
+                    self.sigma[bi][alpha] = b_std
+                    self.sigma_2[bi][alpha] = b_var
+                    self.mean[bi][alpha] = b_mean
 
                 size = len(data)
 
                 values, bins, bars = axes[i].hist(data, 40, color=self.plot_colors[i], weights=np.ones(size)/size)
                 axes[i].yaxis.set_major_formatter(PercentFormatter(1))
-                axes[i].axvline(b_mean, color='k', linestyle='dashed', linewidth=1)            
+                axes[i].axvline(b_mean, color='k', linestyle='dashed', linewidth=1)
 
                 # Add the text box
-                text_str = f'Dispersión\n$\sigma={b_std:.4f}$\n$\sigma^{2}={b_var:.4f}$\nmean={b_mean:.2f}'
+                text_str = f'Dispersion\n$\sigma={b_std:.4f}$\n$\sigma^{2}={b_var:.4f}$\nmean={b_mean:.2f}\nanomalies={anomalies_count}'
 
                 if b_mean > center:
                     x_pos = 0.05
@@ -168,8 +205,29 @@ class StatisticAnalyser():
 
                 axes[i].text(x_pos, 0.95, text_str, fontsize=12, bbox=props, transform=axes[i].transAxes, verticalalignment='top')
 
+                # Add bar values
+                y_height = np.zeros(40)
+                for j, val in enumerate(values):
+                    y_height[j] = val
+
+                rects = axes[i].patches
+                x_center = np.zeros(len(rects))
+                for j, rect in enumerate(rects):
+                    x_center[j] = rect.get_x() + rect.get_width()/2
+
+                for j in range(len(x_center)):
+                    if values[j] != 0:
+                        axes[i].text(x_center[j], y_height[j]+0.001, '▴', fontdict={'size': 6})
+
                 axes[i].set_xlabel(f'B_opt{bi}')
                 axes[i].set_title(f"{100*perc[f'b{bi}']:.1f}% Not converged", fontweight ="bold")
+
+            else:
+                if append:
+                    self.not_converged[bi][alpha] = None
+                    self.sigma[bi][alpha] = None
+                    self.sigma_2[bi][alpha] = None
+                    self.mean[bi][alpha] = None
 
         if show:
             plt.show()
@@ -180,6 +238,180 @@ class StatisticAnalyser():
 
         plt.close()
 
+    def plot_general_dispersion_stats(self, save=True, show=False, calc_types=8, mode=None):
+        if mode == 'odd':
+            output_path = os.path.join('results', 'optimization', 'Statistic_Plots', 'general', 'by_oddmetric')
+        elif mode == 'even':
+            output_path = os.path.join('results', 'optimization', 'Statistic_Plots', 'general', 'by_evenmetric')
+        else:
+            output_path = os.path.join('results', 'optimization', 'Statistic_Plots', 'general', 'by_metric')
+
+        if not os.path.isdir(output_path):
+            os.makedirs(output_path)
+
+        ##################################################################################
+        # Convergence count
+        fig_a, ax_a = plt.subplots(2, 2)
+        ax_a = ax_a.flatten()
+        fig_a.suptitle(f'Not-Convergence count 1/2')
+        fig_a.set_size_inches(20, 13)
+        fig_a.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        fig_b, ax_b = plt.subplots(2, 2)
+        ax_b = ax_b.flatten()
+        fig_b.suptitle(f'Not-Convergence count 2/2')
+        fig_b.set_size_inches(20, 13)
+        fig_b.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        for i in range(calc_types):
+            bi = i+1
+
+            # Not converged count
+            x_count = self.not_converged[bi].keys()
+            y_count = self.not_converged[bi].values()
+
+            if i<4:
+                ax_a[i].set_title(f'b{bi}')
+                ax_a[i].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_a[i].set_xlabel('alpha')
+                ax_a[i].set_ylabel('Not-Convergence Count')
+            else:
+                j = i-4
+                ax_b[j].set_title(f'b{bi}')
+                ax_b[j].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_b[j].set_xlabel('alpha')
+                ax_b[j].set_ylabel('Not-Convergence Count')
+
+        if save:
+            file_a = os.path.join(output_path, 'Not-Convergence_Count_1.pdf')
+            fig_a.savefig(file_a, dpi=450, format='pdf')
+
+            file_b = os.path.join(output_path, 'Not-Convergence_Count_2.pdf')
+            fig_b.savefig(file_b, dpi=450, format='pdf')
+
+        ##################################################################################
+        # Sigma
+        fig_a, ax_a = plt.subplots(2, 2)
+        ax_a = ax_a.flatten()
+        fig_a.suptitle(f'Standard Deviation 1/2')
+        fig_a.set_size_inches(20, 13)
+        fig_a.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        fig_b, ax_b = plt.subplots(2, 2)
+        ax_b = ax_b.flatten()
+        fig_b.suptitle(f'Standard Deviation 2/2')
+        fig_b.set_size_inches(20, 13)
+        fig_b.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        for i in range(calc_types):
+            bi = i+1
+
+            # Sigma
+            x_count = self.sigma[bi].keys()
+            y_count = self.sigma[bi].values()
+
+            if i<4:
+                ax_a[i].set_title(f'b{bi}')
+                ax_a[i].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_a[i].set_xlabel('alpha')
+                ax_a[i].set_ylabel('$\sigma$')
+            else:
+                j = i-4
+                ax_b[j].set_title(f'b{bi}')
+                ax_b[j].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_b[j].set_xlabel('alpha')
+                ax_b[j].set_ylabel('$\sigma$')
+
+        if save:
+            file_a = os.path.join(output_path, 'Standard_Deviation_1.pdf')
+            fig_a.savefig(file_a, dpi=450, format='pdf')
+
+            file_b = os.path.join(output_path, 'Standard_Deviation_2.pdf')
+            fig_b.savefig(file_b, dpi=450, format='pdf')
+
+        ##################################################################################
+        # Sigma²
+        fig_a, ax_a = plt.subplots(2, 2)
+        ax_a = ax_a.flatten()
+        fig_a.suptitle(f'Variance 1/2')
+        fig_a.set_size_inches(20, 13)
+        fig_a.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        fig_b, ax_b = plt.subplots(2, 2)
+        ax_b = ax_b.flatten()
+        fig_b.suptitle(f'Variance 2/2')
+        fig_b.set_size_inches(20, 13)
+        fig_b.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        for i in range(calc_types):
+            bi = i+1
+
+            # Sigma²
+            x_count = self.sigma_2[bi].keys()
+            y_count = self.sigma_2[bi].values()
+
+            if i<4:
+                ax_a[i].set_title(f'b{bi}')
+                ax_a[i].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_a[i].set_xlabel('alpha')
+                ax_a[i].set_ylabel('$\sigma^{2}$')
+            else:
+                j = i-4
+                ax_b[j].set_title(f'b{bi}')
+                ax_b[j].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_b[j].set_xlabel('alpha')
+                ax_b[j].set_ylabel('$\sigma^{2}$')
+
+        if save:
+            file_a = os.path.join(output_path, 'Variance_1.pdf')
+            fig_a.savefig(file_a, dpi=450, format='pdf')
+
+            file_b = os.path.join(output_path, 'Variance_2.pdf')
+            fig_b.savefig(file_b, dpi=450, format='pdf')
+
+        ##################################################################################
+        # mean
+        fig_a, ax_a = plt.subplots(2, 2)
+        ax_a = ax_a.flatten()
+        fig_a.suptitle(f'Mean 1/2')
+        fig_a.set_size_inches(20, 13)
+        fig_a.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        fig_b, ax_b = plt.subplots(2, 2)
+        ax_b = ax_b.flatten()
+        fig_b.suptitle(f'Mean 2/2')
+        fig_b.set_size_inches(20, 13)
+        fig_b.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+
+        for i in range(calc_types):
+            bi = i+1
+
+            # Mean
+            x_count = self.mean[bi].keys()
+            y_count = self.mean[bi].values()
+
+            if i<4:
+                ax_a[i].set_title(f'b{bi}')
+                ax_a[i].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_a[i].set_xlabel('alpha')
+                ax_a[i].set_ylabel('$\\bar{X}$')
+            else:
+                j = i-4
+                ax_b[j].set_title(f'b{bi}')
+                ax_b[j].plot(x_count, y_count, color=self.plot_colors[i], marker='.')
+                ax_b[j].set_xlabel('alpha')
+                ax_b[j].set_ylabel('$\\bar{X}$')
+
+        if save:
+            file_a = os.path.join(output_path, 'Mean_1.pdf')
+            fig_a.savefig(file_a, dpi=450, format='pdf')
+
+            file_b = os.path.join(output_path, 'Mean_2.pdf')
+            fig_b.savefig(file_b, dpi=450, format='pdf')
+
+        if show:
+            plt.show()
+
     def plot_correlation_matrix(self, database, output_folder, save=False, show=False):
         '''
         Plot correlation matrix
@@ -187,7 +419,7 @@ class StatisticAnalyser():
         save (`bool`):
             if True, saves the fig_A.
             Default is False
-        
+
         show(`bool`):
             if True, shows the builded plot. Default is False
         '''
@@ -202,7 +434,7 @@ class StatisticAnalyser():
         fig.set_size_inches(9, 9)
 
         sns.heatmap(corr_m, linewidths=0.5, mask=(np.abs(corr_m) <= 0.3), annot=True, annot_kws={"size":6}, square=True, ax=ax)
-        
+
         if show:
             plt.show()
 
@@ -210,7 +442,7 @@ class StatisticAnalyser():
             path = os.path.join(self.optim_plots_path, output_folder)
             if not os.path.isdir(path):
                 os.makedirs(path)
-            
+
             file = os.path.join(path, 'Correlation_matrix.pdf')
             fig.savefig(file, dpi=450, format='pdf')
 
@@ -224,7 +456,7 @@ class StatisticAnalyser():
         save (`bool`):
             if True, saves the fig to root/results/recovering/Statistic_Plots/output_path/fig.pdf.
             Default is False
-        
+
         show(`bool`):
             if True, shows the builded plot. Default is False
         '''
@@ -240,19 +472,15 @@ class StatisticAnalyser():
         Ecorr_real = database_df['CIe']
         Mu_real = database_df['Mu']
         Theta_real = database_df['Theta']
-        
+
         MAE_E_results = {i+1 : {} for i in range(b_amount)}
         MAE_Mu_results = {i+1 : {} for i in range(b_amount)}
         MAE_Theta_results = {i+1 : {} for i in range(b_amount)}
-        
+
         Recover_results = {}
 
         for perc in percent:
-
-            print(f'\nPercent: {perc}')
-            
             for b in valid_b:
-
                 file = os.path.join(saved_path, 'saved_values', f'data_alpha_{alpha}', f'Ecorrb{b}_a{alpha}_perc{perc}.npy')
                 array_data = np.load(file)
 
@@ -261,7 +489,6 @@ class StatisticAnalyser():
                 Recover_results[f'Mu_{b}'] = array_data[:,2]
 
             for b in valid_b:
-
                 MAE = mean_absolute_error(Ecorr_real, Recover_results[f'Ecorr_{b}'])
                 MAE_E_results[b][perc] = MAE
 
@@ -295,7 +522,7 @@ class StatisticAnalyser():
             axis['A'], axis['B'], axis['C'], axis['D'],
             axis['E'], axis['F'], axis['G'], axis['H']
         ]
-        
+
         for b in valid_b:
             x = np.array(percent)
             y = [val for val in MAE_E_results[b].values()]
@@ -306,7 +533,7 @@ class StatisticAnalyser():
             axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
             axes[b-1].set_xlabel('Percentage')
             axes[b-1].set_ylabel('-log(MAE)')
-        
+
         if show:
             plt.show()
 
@@ -315,7 +542,7 @@ class StatisticAnalyser():
 
             if not os.path.isdir(plots_path):
                 os.makedirs(plots_path)
-            
+
             path = os.path.join(plots_path, f'Correlation_Energy_Recover_a{alpha}.pdf')
             fig_Ecorr.savefig(path, dpi=450, format='pdf')
 
@@ -329,7 +556,7 @@ class StatisticAnalyser():
             axis['A'], axis['B'], axis['C'], axis['D'],
             axis['E'], axis['F'], axis['G'], axis['H']
         ]
-        
+
         for b in valid_b:
             x = np.array(percent)
             y = [val for val in MAE_Mu_results[b].values()]
@@ -340,7 +567,7 @@ class StatisticAnalyser():
             axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
             axes[b-1].set_xlabel('Percentage')
             axes[b-1].set_ylabel('-log(MAE)')
-        
+
         if show:
             plt.show()
 
@@ -349,7 +576,7 @@ class StatisticAnalyser():
 
             if not os.path.isdir(plots_path):
                 os.makedirs(plots_path)
-            
+
             path = os.path.join(plots_path, f'Mu_Recover_a{alpha}.pdf')
             fig_Mu.savefig(path, dpi=450, format='pdf')
 
@@ -363,7 +590,7 @@ class StatisticAnalyser():
             axis['A'], axis['B'], axis['C'], axis['D'],
             axis['E'], axis['F'], axis['G'], axis['H']
         ]
-        
+
         for b in valid_b:
             x = np.array(percent)
             y = [val for val in MAE_Theta_results[b].values()]
@@ -374,7 +601,7 @@ class StatisticAnalyser():
             axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
             axes[b-1].set_xlabel('Percentage')
             axes[b-1].set_ylabel('-log(MAE)')
-        
+
         if show:
             plt.show()
 
@@ -383,8 +610,110 @@ class StatisticAnalyser():
 
             if not os.path.isdir(plots_path):
                 os.makedirs(plots_path)
-            
+
             path = os.path.join(plots_path, f'Theta_Recover_a{alpha}.pdf')
             fig_Theta.savefig(path, dpi=450, format='pdf')
-        
+
         plt.close('all')
+
+    def plot_general_recovering_stats(self, alpha_list, percent, save=True, show=False):
+        path = os.path.join('results', 'recovering', 'dataframes')
+        output_path = os.path.join('results', 'recovering', 'Statistic_Plots', 'general', 'partial')
+
+        if not os.path.isdir(output_path):
+            os.makedirs(output_path)
+
+        markers = [
+            ".", "o", "v", "^",
+            "<", ">", "s", "*",
+            "x"
+        ]
+
+        lines = [
+            "solid", "dotted", "solid", "dashed",
+            "solid", "dashdot", "solid", "dotted",
+            "solid"
+        ]
+
+        min_alpha = min(alpha_list)
+        max_alpha = max(alpha_list)
+
+        files = {}
+
+        for alpha in alpha_list:
+            files[alpha] = os.path.join(path, f'MAE_E_a{alpha}.csv')
+
+        dataframes = {}
+
+        for alpha in alpha_list:
+            dataframes[alpha] = pd.read_csv(files[alpha])
+
+        data = {
+            i+1 : {perc : {} for perc in percent} for i in range(8)
+        }
+
+        for i in range(8):
+            bi = i+1
+            for j, perc in enumerate(percent):
+                for alpha in alpha_list:
+                    df = dataframes[alpha]
+                    column = df[f'{bi}']
+                    data[bi][perc][alpha] = column[j]
+
+        fig_a, ax_a = plt.subplots(2,2)
+        fig_a.suptitle('Energy Recover 1/2')
+        fig_a.set_size_inches(20, 13)
+        fig_a.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+        ax_a = ax_a.flatten()
+
+        fig_b, ax_b = plt.subplots(2,2)
+        fig_b.suptitle('Energy Recover 2/2')
+        fig_b.set_size_inches(20, 13)
+        fig_b.subplots_adjust(left=0.06, bottom=0.06, right=0.96, top=0.94, hspace=0.19, wspace=0.15)
+        ax_b = ax_b.flatten()
+
+        for i in range(8):
+            bi = i+1
+
+            if i<4:
+                percent_keys = data[bi].keys()
+
+                for k, perc in enumerate(percent_keys):
+                    x = data[bi][perc].keys()
+                    y = data[bi][perc].values()
+
+                    y = [-np.log10(val) for val in y]
+
+                    ax_a[i].plot(x, y, marker=markers[k], color=self.plot_colors[i], linestyle=lines[k])
+                    ax_a[i].axhline(1.5, linestyle='dashed', linewidth='0.7')
+                    ax_a[i].set_title(f'b{bi}')
+                    ax_a[i].set_ylabel('-log(MAE)')
+                    ax_a[i].set_xlabel('alpha')
+
+                ax_a[i].legend(percent_keys)
+                ax_a[i].set_xlim([min_alpha, max_alpha])
+            else:
+                j = i-4
+                percent_keys = data[bi].keys()
+
+                for k, perc in enumerate(percent_keys):
+                    x = data[bi][perc].keys()
+                    y = data[bi][perc].values()
+
+                    y = [-np.log10(val) for val in y]
+
+                    ax_b[j].plot(x, y, marker=markers[k], color=self.plot_colors[i], linestyle=lines[k])
+                    ax_b[j].axhline(1.5, linestyle='dashed', linewidth='0.7')
+                    ax_b[j].set_title(f'b{bi}')
+                    ax_b[j].set_ylabel('-log(MAE)')
+                    ax_b[j].set_xlabel('alpha')
+
+                ax_b[j].legend(percent_keys)
+                ax_b[j].set_xlim([min_alpha, max_alpha])
+
+        if show:
+            plt.show()
+
+        if save:
+            fig_a.savefig(os.path.join(output_path, 'recovering_1.pdf'), dpi=450, format='pdf')
+            fig_b.savefig(os.path.join(output_path, 'recovering_2.pdf'), dpi=450, format='pdf')

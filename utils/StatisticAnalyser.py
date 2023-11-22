@@ -482,21 +482,31 @@ class StatisticAnalyser():
         for perc in percent:
             for b in valid_b:
                 file = os.path.join(saved_path, 'saved_values', f'data_alpha_{alpha}', f'Ecorrb{b}_a{alpha}_perc{perc}.npy')
-                array_data = np.load(file)
+                try:
+                    array_data = np.load(file)
 
-                Recover_results[f'Ecorr_{b}'] = array_data[:,0]
-                Recover_results[f'Theta_{b}']= array_data[:,1]
-                Recover_results[f'Mu_{b}'] = array_data[:,2]
+                    Recover_results[f'Ecorr_{b}'] = array_data[:,0]
+                    Recover_results[f'Theta_{b}']= array_data[:,1]
+                    Recover_results[f'Mu_{b}'] = array_data[:,2]
+                except:
+                    Recover_results[f'Ecorr_{b}'] = None
+                    Recover_results[f'Theta_{b}']= None
+                    Recover_results[f'Mu_{b}'] = None
 
             for b in valid_b:
-                MAE = mean_absolute_error(Ecorr_real, Recover_results[f'Ecorr_{b}'])
-                MAE_E_results[b][perc] = MAE
+                try:
+                    MAE = mean_absolute_error(Ecorr_real, Recover_results[f'Ecorr_{b}'])
+                    MAE_E_results[b][perc] = MAE
 
-                MAE = mean_absolute_error(Mu_real, Recover_results[f'Mu_{b}'])
-                MAE_Mu_results[b][perc] = MAE
+                    MAE = mean_absolute_error(Mu_real, Recover_results[f'Mu_{b}'])
+                    MAE_Mu_results[b][perc] = MAE
 
-                MAE = mean_absolute_error(Theta_real, Recover_results[f'Theta_{b}'])
-                MAE_Theta_results[b][perc] = MAE
+                    MAE = mean_absolute_error(Theta_real, Recover_results[f'Theta_{b}'])
+                    MAE_Theta_results[b][perc] = MAE
+                except:
+                    MAE_E_results[b][perc] = None
+                    MAE_Mu_results[b][perc] = None
+                    MAE_Theta_results[b][perc] = None
 
         # Build and save the dataframes to csv files
         MAE_E_df = pd.DataFrame(MAE_E_results)
@@ -524,15 +534,18 @@ class StatisticAnalyser():
         ]
 
         for b in valid_b:
-            x = np.array(percent)
-            y = [val for val in MAE_E_results[b].values()]
+            try:
+                x = np.array(percent)
+                y = [val for val in MAE_E_results[b].values()]
 
-            y = -np.log10(y)
+                y = -np.log10(y)
 
-            axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
-            axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
-            axes[b-1].set_xlabel('Percentage')
-            axes[b-1].set_ylabel('-log(MAE)')
+                axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
+                axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
+                axes[b-1].set_xlabel('Percentage')
+                axes[b-1].set_ylabel('-log(MAE)')
+            except:
+                pass
 
         if show:
             plt.show()
@@ -558,15 +571,18 @@ class StatisticAnalyser():
         ]
 
         for b in valid_b:
-            x = np.array(percent)
-            y = [val for val in MAE_Mu_results[b].values()]
+            try:
+                x = np.array(percent)
+                y = [val for val in MAE_Mu_results[b].values()]
 
-            y = -np.log10(y)
+                y = -np.log10(y)
 
-            axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
-            axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
-            axes[b-1].set_xlabel('Percentage')
-            axes[b-1].set_ylabel('-log(MAE)')
+                axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
+                axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
+                axes[b-1].set_xlabel('Percentage')
+                axes[b-1].set_ylabel('-log(MAE)')
+            except:
+                pass
 
         if show:
             plt.show()
@@ -592,15 +608,18 @@ class StatisticAnalyser():
         ]
 
         for b in valid_b:
-            x = np.array(percent)
-            y = [val for val in MAE_Theta_results[b].values()]
+            try:
+                x = np.array(percent)
+                y = [val for val in MAE_Theta_results[b].values()]
 
-            y = -np.log10(y)
+                y = -np.log10(y)
 
-            axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
-            axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
-            axes[b-1].set_xlabel('Percentage')
-            axes[b-1].set_ylabel('-log(MAE)')
+                axes[b-1].plot(x, y, marker='+', color=self.plot_colors[b])
+                axes[b-1].set_title(f'B_opt{b}', fontweight='bold')
+                axes[b-1].set_xlabel('Percentage')
+                axes[b-1].set_ylabel('-log(MAE)')
+            except:
+                pass
 
         if show:
             plt.show()

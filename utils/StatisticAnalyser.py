@@ -448,7 +448,7 @@ class StatisticAnalyser():
 
         plt.close()
 
-    def plot_recovered_err(self, database, alpha, percent, save=False, show=False):
+    def plot_recovered_err(self, database, alpha, percent, save=False, show=False, mode=''):
         '''
         Plot the correlation energy recovering
 
@@ -460,6 +460,17 @@ class StatisticAnalyser():
         show(`bool`):
             if True, shows the builded plot. Default is False
         '''
+        # container per mode
+        if mode == 'even':
+            folder = 'dataframes_even'
+            container = f'results_a{alpha}_even'
+        elif mode == 'odd':
+            folder = 'dataframes_odd'
+            container = f'results_a{alpha}_odd'
+        else:
+            folder = 'dataframes'
+            container = f'results_a{alpha}'
+
         # recover_plots_path = os.path.join('results', 'recovering', f'a{alpha}_results')
         saved_path = os.path.join('results', 'recovering')
 
@@ -481,7 +492,13 @@ class StatisticAnalyser():
 
         for perc in percent:
             for b in valid_b:
-                file = os.path.join(saved_path, 'saved_values', f'data_alpha_{alpha}', f'Ecorrb{b}_a{alpha}_perc{perc}.npy')
+                if mode == 'even':
+                    file = os.path.join(saved_path, 'saved_values', f'data_alpha_{alpha}_even', f'Ecorrb{b}_a{alpha}_perc{perc}.npy')
+                elif mode == 'odd':
+                    file = os.path.join(saved_path, 'saved_values', f'data_alpha_{alpha}_odd', f'Ecorrb{b}_a{alpha}_perc{perc}.npy')
+                else:
+                    file = os.path.join(saved_path, 'saved_values', f'data_alpha_{alpha}', f'Ecorrb{b}_a{alpha}_perc{perc}.npy')
+
                 try:
                     array_data = np.load(file)
 
@@ -508,17 +525,17 @@ class StatisticAnalyser():
                     MAE_Mu_results[b][perc] = None
                     MAE_Theta_results[b][perc] = None
 
-        # Build and save the dataframes to csv files
+        # Build and save the dataframes to csv files                
         MAE_E_df = pd.DataFrame(MAE_E_results)
-        path = os.path.join(saved_path, 'dataframes', f'MAE_E_a{alpha}.csv')
+        path = os.path.join(saved_path, folder, f'MAE_E_a{alpha}.csv')
         MAE_E_df.to_csv(path)
 
         MAE_Mu_df = pd.DataFrame(MAE_Mu_results)
-        path = os.path.join(saved_path, 'dataframes', f'MAE_Mu_a{alpha}.csv')
+        path = os.path.join(saved_path, folder, f'MAE_Mu_a{alpha}.csv')
         MAE_Mu_df.to_csv(path)
 
         MAE_Theta_df = pd.DataFrame(MAE_Theta_results)
-        path = os.path.join(saved_path, 'dataframes', f'MAE_Theta_a{alpha}.csv')
+        path = os.path.join(saved_path, folder, f'MAE_Theta_a{alpha}.csv')
         MAE_Theta_df.to_csv(path)
 
         # Build and save plots
@@ -551,12 +568,12 @@ class StatisticAnalyser():
             plt.show()
 
         if save:
-            plots_path = os.path.join(saved_path, 'Statistic_Plots', f'results_{alpha}')
+            plots_path = os.path.join(saved_path, 'Statistic_Plots', container)
 
             if not os.path.isdir(plots_path):
                 os.makedirs(plots_path)
 
-            path = os.path.join(plots_path, f'Correlation_Energy_Recover_a{alpha}.pdf')
+            path = os.path.join(plots_path, f'Correlation_{mode}Energy_Recover_a{alpha}.pdf')
             fig_Ecorr.savefig(path, dpi=450, format='pdf')
 
         #================================= Mu_recover =========================================
@@ -588,12 +605,12 @@ class StatisticAnalyser():
             plt.show()
 
         if save:
-            plots_path = os.path.join(saved_path, 'Statistic_Plots', f'results_{alpha}')
+            plots_path = os.path.join(saved_path, 'Statistic_Plots', container)
 
             if not os.path.isdir(plots_path):
                 os.makedirs(plots_path)
 
-            path = os.path.join(plots_path, f'Mu_Recover_a{alpha}.pdf')
+            path = os.path.join(plots_path, f'Mu_{mode}Recover_a{alpha}.pdf')
             fig_Mu.savefig(path, dpi=450, format='pdf')
 
         #================================= Theta_recover =========================================
@@ -625,19 +642,25 @@ class StatisticAnalyser():
             plt.show()
 
         if save:
-            plots_path = os.path.join(saved_path, 'Statistic_Plots', f'results_{alpha}')
+            plots_path = os.path.join(saved_path, 'Statistic_Plots', container)
 
             if not os.path.isdir(plots_path):
                 os.makedirs(plots_path)
 
-            path = os.path.join(plots_path, f'Theta_Recover_a{alpha}.pdf')
+            path = os.path.join(plots_path, f'Theta_{mode}Recover_a{alpha}.pdf')
             fig_Theta.savefig(path, dpi=450, format='pdf')
 
         plt.close('all')
 
-    def plot_general_recovering_stats(self, alpha_list, percent, save=True, show=False):
-        path = os.path.join('results', 'recovering', 'dataframes')
-        output_path = os.path.join('results', 'recovering', 'Statistic_Plots', 'general', 'partial')
+    def plot_general_recovering_stats(self, alpha_list, percent, save=True, show=False, mode=''):
+        if mode=='even':
+            path = os.path.join('results', 'recovering', 'dataframes_even')
+        elif mode=='odd':
+            path = os.path.join('results', 'recovering', 'dataframes_odd')
+        else:
+            path = os.path.join('results', 'recovering', 'dataframes')
+        
+        output_path = os.path.join('results', 'recovering', 'Statistic_Plots', 'general', f'{mode}partial')
 
         if not os.path.isdir(output_path):
             os.makedirs(output_path)
@@ -648,9 +671,15 @@ class StatisticAnalyser():
             "x"
         ]
 
+        # lines = [
+        #     "solid", "dotted", "solid", "dashed",
+        #     "solid", "dashdot", "solid", "dotted",
+        #     "solid"
+        # ]
+
         lines = [
-            "solid", "dotted", "solid", "dashed",
-            "solid", "dashdot", "solid", "dotted",
+            "solid", "solid", "solid", "solid",
+            "solid", "solid", "solid", "solid",
             "solid"
         ]
 
@@ -720,7 +749,7 @@ class StatisticAnalyser():
                     y = data[bi][perc].values()
 
                     y = [-np.log10(val) for val in y]
-
+                    
                     ax_b[j].plot(x, y, marker=markers[k], color=self.plot_colors[i], linestyle=lines[k])
                     ax_b[j].axhline(1.5, linestyle='dashed', linewidth='0.7')
                     ax_b[j].set_title(f'b{bi}')
@@ -734,5 +763,5 @@ class StatisticAnalyser():
             plt.show()
 
         if save:
-            fig_a.savefig(os.path.join(output_path, 'recovering_1.pdf'), dpi=450, format='pdf')
-            fig_b.savefig(os.path.join(output_path, 'recovering_2.pdf'), dpi=450, format='pdf')
+            fig_a.savefig(os.path.join(output_path, f'recovering{mode}_1.pdf'), dpi=450, format='pdf')
+            fig_b.savefig(os.path.join(output_path, f'recovering{mode}_2.pdf'), dpi=450, format='pdf')

@@ -49,19 +49,25 @@ class PlotMerge():
         merger.write(file)
         merger.close()
 
-    def mergeRecover(self, alpha):
+    def mergeRecover(self, alpha, mode=''):
         energy_pdfs = []
         mu_pdfs = []
         theta_pdfs = []
         
         for a in alpha:
             
-            pdfs_path = os.path.join('results', 'recovering', 'Statistic_Plots', f'results_{a}')
+            if mode == 'even':
+                pdfs_path = os.path.join('results', 'recovering', 'Statistic_Plots', f'results_a{a}_even')
+            elif mode == 'odd':
+                pdfs_path = os.path.join('results', 'recovering', 'Statistic_Plots', f'results_a{a}_odd')
+            else:
+                pdfs_path = os.path.join('results', 'recovering', 'Statistic_Plots', f'results_a{a}')
+    
             output_path = os.path.join('results', 'recovering', 'Statistic_Plots', 'general')
 
-            energy_path = os.path.join(pdfs_path, f'Correlation_Energy_Recover_a{a}.pdf')
-            mu_path = os.path.join(pdfs_path, f'Mu_Recover_a{a}.pdf')
-            theta_path = os.path.join(pdfs_path, f'Theta_Recover_a{a}.pdf')
+            energy_path = os.path.join(pdfs_path, f'Correlation_{mode}Energy_Recover_a{a}.pdf')
+            mu_path = os.path.join(pdfs_path, f'Mu_{mode}Recover_a{a}.pdf')
+            theta_path = os.path.join(pdfs_path, f'Theta_{mode}Recover_a{a}.pdf')
 
             energy_pdfs.append(energy_path)
             mu_pdfs.append(mu_path)
@@ -73,7 +79,7 @@ class PlotMerge():
             for pdf in energy_pdfs:
                 merger.append(pdf)
 
-            file = os.path.join(output_path, 'Energy_recovering.pdf')
+            file = os.path.join(output_path, f'Energy_{mode}recovering.pdf')
             merger.write(file)
             merger.close()
 
@@ -83,7 +89,7 @@ class PlotMerge():
             for pdf in mu_pdfs:
                 merger.append(pdf)
 
-            file = os.path.join(output_path, 'Mu_recovering.pdf')
+            file = os.path.join(output_path, f'Mu_{mode}recovering.pdf')
             merger.write(file)
             merger.close()
 
@@ -93,6 +99,6 @@ class PlotMerge():
             for pdf in theta_pdfs:
                 merger.append(pdf)
 
-            file = os.path.join(output_path, 'Theta_recovering.pdf')
+            file = os.path.join(output_path, f'Theta_{mode}recovering.pdf')
             merger.write(file)
             merger.close()

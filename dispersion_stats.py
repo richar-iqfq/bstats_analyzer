@@ -3,8 +3,8 @@ from utils.PlotMerge import PlotMerge
 import os
 
 if __name__=='__main__':
-    mode = 'odd' # '', 'odd' or 'even'
-    step = ['dispersion'] # dispersion, energy 
+    mode = '' # '', 'odd' or 'even'
+    step = ['energy'] # dispersion, energy 
 
     alpha_total_optimization = [
         -0.06, -0.08, -0.1, -0.12, -0.13, -0.133, -0.136, -0.139,
@@ -21,7 +21,11 @@ if __name__=='__main__':
         -0.324, -0.327, -0.36, -0.39,
         -0.42, -0.47, -0.5, -0.52, -0.54,
         -0.56, -0.58, -0.6, -0.63, -0.66,
-        -0.69, -0.72, -0.75, -0.78, -0.81
+        -0.69, -0.72, -0.75, -0.78, -0.81,
+        -0.58, -0.33, -0.43, -0.73, -0.83, -0.55, -0.61,
+        -0.47-0.07, -0.22, -0.32, -0.62, -0.72, -0.44, -0.5,
+        -0.36, -0.11, -0.21, -0.51, -0.61, -0.33, -0.39,
+        -0.72, -0.47, -0.57, -0.87, -0.97, -0.69, -0.75
     ]
 
     # -0.321
@@ -32,7 +36,9 @@ if __name__=='__main__':
         -0.02, -0.035, -0.04, 
         -0.045, -0.05, -0.07, -0.1,
         -0.13, -0.133, -0.136, -0.145,
-        -0.148, -0.151, -0.154, -0.157
+        -0.148, -0.151, -0.154, -0.157,
+        0.18, -0.07, 0.03, 0.33, 0.43, 0.15, 0.21,
+        0.066, -0.184, -0.084, 0.216, 0.316, 0.096, 0.036
     ]
 
     # -0.3, -0.303, -0.306,
@@ -51,11 +57,17 @@ if __name__=='__main__':
 
     alpha_even_recovering = [
         -0.03, -0.035, -0.04,
-        -0.045, -0.05
+        -0.045, -0.05,
+        0.18, -0.07, 0.03, 0.33, 0.43, 0.15, 0.21,
+        0.066, -0.184, -0.084, 0.216, 0.316, 0.096, 0.036
     ]
 
     alpha_odd_recovering = [
-        -0.36, -0.47
+        -0.36, -0.47,
+        -0.58, -0.33, -0.43, -0.73, -0.83, -0.55, -0.61,
+        -0.47, -0.22, -0.32, -0.62, -0.72, -0.44, -0.5,
+        -0.36, -0.11, -0.21, -0.51, -0.61, -0.33, -0.39,
+        -0.72, -0.47, -0.57, -0.87, -0.97, -0.69, -0.75
     ]
 
     percent = [
@@ -71,15 +83,15 @@ if __name__=='__main__':
     merger = PlotMerge()
 
     alpha_optimization = {
-        '' : alpha_total_optimization,
-        'odd' : alpha_odd_optimization,
-        'even' : alpha_even_optimization
+        '' : list(dict.fromkeys(alpha_total_optimization)),
+        'odd' : list(dict.fromkeys(alpha_odd_optimization)),
+        'even' : list(dict.fromkeys(alpha_even_optimization))
     }
 
     alpha_recovering = {
-        '' : alpha_total_recovering,
-        'odd' : alpha_odd_recovering,
-        'even' : alpha_even_recovering
+        '' : list(dict.fromkeys(alpha_total_recovering)),
+        'odd' : list(dict.fromkeys(alpha_odd_recovering)),
+        'even' : list(dict.fromkeys(alpha_even_recovering))
     }
 
     #################################################
@@ -135,6 +147,7 @@ if __name__=='__main__':
 
     if 'energy' in step:
         # Energy recover by alpha
+        alpha_recovering[mode].sort()
         for a in alpha_recovering[mode]:
             if mode == 'odd':
                 database = f'results/optimization/a{a}_odd_results/results_a{a}.csv'

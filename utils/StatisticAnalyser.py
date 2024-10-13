@@ -138,11 +138,11 @@ class StatisticAnalyser():
         '''
 
         if mode == 'odd':
-            optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_odd_results')
+            self.optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_odd_results')
         elif mode == 'even':
-            optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_even_results')
+            self.optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_even_results')
         else:
-            optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_results')
+            self.optim_plots_path = os.path.join('results', 'optimization', f'a{alpha}_results')
 
         database_df = pd.read_csv(database)
 
@@ -233,7 +233,7 @@ class StatisticAnalyser():
             plt.show()
 
         if save:
-            path = os.path.join(optim_plots_path, f'b_dispersion_a{alpha}.pdf')
+            path = os.path.join(self.optim_plots_path, f'b_dispersion_a{alpha}.pdf')
             fig.savefig(path, dpi=450, format='pdf')
 
         plt.close()
@@ -425,7 +425,8 @@ class StatisticAnalyser():
         '''
 
         database_df = pd.read_csv(database)
-        df = database_df.drop(columns=['HF', 'Factor', 'Err1', 'Err2', 'Err3', 'Err4', 'Err5', 'Err6', 'Err7', 'Err8'])
+        # df = database_df.drop(columns=['HF', 'Factor', 'Err1', 'Err2', 'Err3', 'Err4', 'Err5', 'Err6', 'Err7', 'Err8'])
+        df = database_df.drop(columns=['HF', 'Factor'])
 
         corr_m = df.corr(numeric_only=True)
 
@@ -433,18 +434,20 @@ class StatisticAnalyser():
         fig.suptitle('Correlation Matrix', fontweight ="bold")
         fig.set_size_inches(9, 9)
 
-        sns.heatmap(corr_m, linewidths=0.5, mask=(np.abs(corr_m) <= 0.3), annot=True, annot_kws={"size":6}, square=True, ax=ax)
+        sns.heatmap(corr_m, linewidths=0.5, mask=(np.abs(corr_m) <= 0.3), annot=True, annot_kws={"size":7}, square=True, ax=ax)
 
         if show:
             plt.show()
 
         if save:
-            path = os.path.join(self.optim_plots_path, output_folder)
-            if not os.path.isdir(path):
-                os.makedirs(path)
+            if not os.path.isdir(output_folder):
+                os.makedirs(output_folder)
 
-            file = os.path.join(path, 'Correlation_matrix.pdf')
-            fig.savefig(file, dpi=450, format='pdf')
+            file_pdf = os.path.join(output_folder, 'Correlation_matrix.pdf')
+            file_png = os.path.join(output_folder, 'Correlation_matrix.png')
+
+            fig.savefig(file_pdf, dpi=450, format='pdf')
+            fig.savefig(file_png, dpi=450, format='png')
 
         plt.close()
 
@@ -666,7 +669,7 @@ class StatisticAnalyser():
             os.makedirs(output_path)
 
         markers = [
-            ".", "o", "v", "^",
+            ".", "^", "v", "^",
             "<", ">", "s", "*",
             "x"
         ]
@@ -733,13 +736,14 @@ class StatisticAnalyser():
                     y = [-np.log10(val) for val in y]
 
                     ax_a[i].plot(x, y, marker=markers[k], color=self.plot_colors[i], linestyle=lines[k])
-                    ax_a[i].axhline(1.5, linestyle='dashed', linewidth='0.7')
+                    
                     ax_a[i].set_title(f'b{bi}')
                     ax_a[i].set_ylabel('-log(MAE)')
                     ax_a[i].set_xlabel('alpha')
 
                 ax_a[i].legend(percent_keys)
                 ax_a[i].set_xlim([min_alpha, max_alpha])
+                ax_a[i].axhline(1.5, linestyle='dashed', linewidth='0.7')
             else:
                 j = i-4
                 percent_keys = data[bi].keys()
@@ -751,13 +755,13 @@ class StatisticAnalyser():
                     y = [-np.log10(val) for val in y]
                     
                     ax_b[j].plot(x, y, marker=markers[k], color=self.plot_colors[i], linestyle=lines[k])
-                    ax_b[j].axhline(1.5, linestyle='dashed', linewidth='0.7')
                     ax_b[j].set_title(f'b{bi}')
                     ax_b[j].set_ylabel('-log(MAE)')
                     ax_b[j].set_xlabel('alpha')
 
                 ax_b[j].legend(percent_keys)
                 ax_b[j].set_xlim([min_alpha, max_alpha])
+                ax_b[j].axhline(1.5, linestyle='dashed', linewidth='0.7')
 
         if show:
             plt.show()

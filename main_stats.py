@@ -1,9 +1,9 @@
 from utils.StatisticAnalyser import StatisticAnalyser
 
 if __name__=='__main__':
-    output_path = 'a-0.27_results'
+    output_path = 'results/general'
     
-    database = 'data/results_a-0.27.csv'
+    database = 'data/data.csv'
     energies = 'data/energies.feather'
 
     sa = StatisticAnalyser()

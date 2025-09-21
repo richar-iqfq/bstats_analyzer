@@ -246,10 +246,10 @@ class PredictionAnalyzer():
             energies, energies_pred = enrg, enrg_pred
 
         MAE_e = mean_absolute_error(energies, energies_pred)
-        MAE_b = mean_absolute_error(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}pred'])
+        MAE_b = mean_absolute_error(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}_pred'])
 
         PE_e = np.sqrt(mean_squared_error(energies, energies_pred))
-        PE_b = np.sqrt(mean_squared_error(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}pred']))
+        PE_b = np.sqrt(mean_squared_error(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}_pred']))
 
         Err = abs(((energies_pred - energies)/energies)*100)
         maxErr = max(Err)
@@ -261,10 +261,10 @@ class PredictionAnalyzer():
         fig.subplots_adjust(wspace=0.320)
         
         # Correlation b plot
-        ax['A'].scatter(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}pred'], s=2, color='y')
+        ax['A'].scatter(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}_pred'], s=2, color='y')
         ax['A'].plot(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}'], '-b', linewidth='0.7')
         
-        r2 = np.corrcoef(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}pred'])
+        r2 = np.corrcoef(self.database[f'B_opt{self.b}'], self.database[f'B_opt{self.b}_pred'])
 
         ax['A'].set_xlabel('b_opt')
         ax['A'].set_ylabel('b Predicted')
@@ -328,9 +328,9 @@ class PredictionAnalyzer():
         # Err as a function of b
         fig_Err_b, ax_Err_b = plt.subplots(1)
         fig_Err_b.set_size_inches(20, 13)
-        fig_Err_b.suptitle('Error as a function of b')
+        ax_Err_b.set_title('Error as a function of b')
 
-        ax_Err_b.plot(self.database[f'B_opt{self.b}pred'], initial_err, '.g')
+        ax_Err_b.plot(self.database[f'B_opt{self.b}_pred'], initial_err, '.g')
         ax_Err_b.set_ylim(0, 1.0)
         ax_Err_b.set_xlabel('b')
         ax_Err_b.set_ylabel('Percentage error')
@@ -569,9 +569,9 @@ class PredictionAnalyzer():
         
         r2 = np.corrcoef(b_values, b_values_pred)
 
-        ax['A'].set_xlabel('b_opt')
-        ax['A'].set_ylabel('b Predicted')
-        ax['A'].set_title(f'RMSE: {PE_b:.2f}      r$^2$: {r2[0,1]:.3f}\nb outliers: {initial_retired}')
+        ax['A'].set_xlabel('$b_{opt}$')
+        ax['A'].set_ylabel('$b_{pred}$')
+        ax['A'].set_title(f'$RMSE$: {PE_b:.2f}      r$^2$: {r2[0,1]:.3f}\n'+'$b_{outliers}$: ' + f'{initial_retired}')
 
         # Correlation energie plot
         ax['B'].scatter(energies, energies_pred, s=2, color='g')
@@ -587,14 +587,14 @@ class PredictionAnalyzer():
         print((1-PE_e)*100)
         print(f'MAE: {MAE_e}\n')
 
-        ax['B'].set_xlabel('Energies')
-        ax['B'].set_ylabel('Energies Predicted')
-        ax['B'].set_title(f'r$^2$: {r2[0,1]:.3f}\nRMSE: {PE_e:.2f}    Acc: {(1-PE_e)*100:.2f}%\nFinal_Molecules: {len(energies)}    Energie outliers: {outliers_count}')
+        ax['B'].set_xlabel('Energías (hartree)')
+        ax['B'].set_ylabel('Energías predichas (hartree)')
+        ax['B'].set_title(f'r$^2$: {r2[0,1]:.3f}\n$RMSE$: {PE_e:.2f}    Precisión: {(1-PE_e)*100:.2f}%\nMoléculas: {len(energies)}    ' + '$E_{outliers}$: ' + f'{outliers_count}')
 
         # Energie Err plot
         values, bins, bars = ax['C'].hist(Err, 40, color='g', weights=np.ones(len(Err)) / len(Err))
         ax['C'].yaxis.set_major_formatter(PercentFormatter(1))
-        ax['C'].set_xlabel('Absolute Percentage Error')
+        ax['C'].set_xlabel('Porcentaje de error absoluto (APE)')
         
         sum = 0
         Accumulate = np.zeros(40)
@@ -616,7 +616,7 @@ class PredictionAnalyzer():
 
         # ax['C'].bar_label(bars, fontsize=20, color='navy')
         ax['C'].axvline(Err.mean(), color='k', linestyle='dashed', linewidth=1)
-        ax['C'].set_title(f'Error over Energie\nMAE = {MAE_e:.4f}    MAPE: {meanErr:.2f}%    Max Absolute Error: {maxErr:.2f}%')
+        ax['C'].set_title(f'Error sobre energías\n$MAE$ = {MAE_e:.4f}    $MAPE$: {meanErr:.2f}%    Error absoluto máximo: {maxErr:.2f}%')
 
         if save:
             fig.savefig(os.path.join(path, f'a{self.alpha}_{self.b}{self.out}_{self.percent}_{strategy}.pdf'), dpi=300, format='pdf')
